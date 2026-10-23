@@ -43,7 +43,7 @@ signal no_moves_remaining()                                   # -> GameManager.o
 var grid: Array = []
 
 func _ready() -> void:
-	reset_board()
+    reset_board()
 
 # ---------------------------------------------------------------------------
 # BOARD LIFECYCLE
@@ -51,13 +51,13 @@ func _ready() -> void:
 
 ## Rebuilds an all-empty 8x8 grid. Allocates exactly GRID_SIZE rows once.
 func reset_board() -> void:
-	grid.clear()
-	for r in GRID_SIZE:
-		var row: Array = []
-		row.resize(GRID_SIZE)
-		row.fill(EMPTY)
-		grid.append(row)
-	board_changed.emit()
+    grid.clear()
+    for r in GRID_SIZE:
+        var row: Array = []
+        row.resize(GRID_SIZE)
+        row.fill(EMPTY)
+        grid.append(row)
+    board_changed.emit()
 
 # ---------------------------------------------------------------------------
 # QUERIES
@@ -65,9 +65,9 @@ func reset_board() -> void:
 
 ## Bounds + occupancy check for one cell.
 func is_cell_empty(row: int, col: int) -> bool:
-	if row < 0 or row >= GRID_SIZE or col < 0 or col >= GRID_SIZE:
-		return false
-	return grid[row][col] == EMPTY
+    if row < 0 or row >= GRID_SIZE or col < 0 or col >= GRID_SIZE:
+        return false
+    return grid[row][col] == EMPTY
 
 
 ## Core placement test.
@@ -77,15 +77,15 @@ func is_cell_empty(row: int, col: int) -> bool:
 ## Returns true if EVERY offset lands inside the board AND on an empty cell.
 ## Cost: O(n) with n = cells in shape (max ~5), allocation-free.
 func can_place_shape(shape_cells: Array, origin_row: int, origin_col: int) -> bool:
-	for offset in shape_cells:
-		var r: int = origin_row + offset.y
-		var c: int = origin_col + offset.x
-		# Inline bounds test (faster than calling is_cell_empty twice).
-		if r < 0 or r >= GRID_SIZE or c < 0 or c >= GRID_SIZE:
-			return false
-		if grid[r][c] != EMPTY:
-			return false
-	return true
+    for offset in shape_cells:
+        var r: int = origin_row + offset.y
+        var c: int = origin_col + offset.x
+        # Inline bounds test (faster than calling is_cell_empty twice).
+        if r < 0 or r >= GRID_SIZE or c < 0 or c >= GRID_SIZE:
+            return false
+        if grid[r][c] != EMPTY:
+            return false
+    return true
 
 
 ## Snapshot helper used by InputHandler for live drag previews: returns the
@@ -97,15 +97,15 @@ func can_place_shape(shape_cells: Array, origin_row: int, origin_col: int) -> bo
 ## NOTE: `cell_offset_y` is reserved for future per-row visual offsets
 ## (e.g. perspective tilt); it currently defaults to 0.0.
 func world_to_grid_clamped(world_pos: Vector2, cell_px: float,
-		cell_offset_y: float, piece_bounds: Vector2i) -> Vector2i:
-	assert(cell_px > 0.0, "world_to_grid_clamped: cell_px must be > 0")
-	var raw_col := int(floor(world_pos.x / cell_px))
-	var raw_row := int(floor((world_pos.y - cell_offset_y) / cell_px))
-	# Clamp origins so the piece bounding box fits the board.
-	# x (width) constrains columns; y (height) constrains rows.
-	raw_col = clampi(raw_col, 0, GRID_SIZE - piece_bounds.x)
-	raw_row = clampi(raw_row, 0, GRID_SIZE - piece_bounds.y)
-	return Vector2i(raw_row, raw_col)
+        cell_offset_y: float, piece_bounds: Vector2i) -> Vector2i:
+    assert(cell_px > 0.0, "world_to_grid_clamped: cell_px must be > 0")
+    var raw_col := int(floor(world_pos.x / cell_px))
+    var raw_row := int(floor((world_pos.y - cell_offset_y) / cell_px))
+    # Clamp origins so the piece bounding box fits the board.
+    # x (width) constrains columns; y (height) constrains rows.
+    raw_col = clampi(raw_col, 0, GRID_SIZE - piece_bounds.x)
+    raw_row = clampi(raw_row, 0, GRID_SIZE - piece_bounds.y)
+    return Vector2i(raw_row, raw_col)
 
 # ---------------------------------------------------------------------------
 # MUTATIONS
@@ -118,18 +118,18 @@ func world_to_grid_clamped(world_pos: Vector2, cell_px: float,
 ## Returns false (no mutation, no signals) when the placement is illegal.
 ## Emits per-cell updates (renderer batches them) + one bulk signal.
 func place_shape(shape_cells: Array, origin_row: int, origin_col: int,
-		color_id: int) -> bool:
-	if not can_place_shape(shape_cells, origin_row, origin_col):
-		return false
-	# Same axis convention as can_place_shape: x = column delta, y = row delta.
-	for offset in shape_cells:
-		var r: int = origin_row + offset.y
-		var c: int = origin_col + offset.x
-		grid[r][c] = color_id
-		cell_changed.emit(r, c, color_id)
-	shape_placed.emit(origin_row, origin_col, color_id)
-	board_changed.emit()
-	return true
+        color_id: int) -> bool:
+    if not can_place_shape(shape_cells, origin_row, origin_col):
+        return false
+    # Same axis convention as can_place_shape: x = column delta, y = row delta.
+    for offset in shape_cells:
+        var r: int = origin_row + offset.y
+        var c: int = origin_col + offset.x
+        grid[r][c] = color_id
+        cell_changed.emit(r, c, color_id)
+    shape_placed.emit(origin_row, origin_col, color_id)
+    board_changed.emit()
+    return true
 
 
 ## Clears full rows/columns (Block-Blast rules: a line clears when ALL 8
@@ -137,53 +137,53 @@ func place_shape(shape_cells: Array, origin_row: int, origin_col: int,
 ## any clearing happens, so an intersecting row+col both clear in one drop.
 ## Returns [lines_count, cells_cleared] via signals for scoring.
 func check_and_clear_lines() -> void:
-	var full_rows: Array[int] = []
-	var full_cols: Array[int] = []
+    var full_rows: Array[int] = []
+    var full_cols: Array[int] = []
 
-	# --- Detect full rows -----------------------------------------------------
-	for r in GRID_SIZE:
-		var complete := true
-		for c in GRID_SIZE:
-			if grid[r][c] == EMPTY:
-				complete = false
-				break
-		if complete:
-			full_rows.append(r)
+    # --- Detect full rows -----------------------------------------------------
+    for r in GRID_SIZE:
+        var complete := true
+        for c in GRID_SIZE:
+            if grid[r][c] == EMPTY:
+                complete = false
+                break
+        if complete:
+            full_rows.append(r)
 
-	# --- Detect full columns --------------------------------------------------
-	for c in GRID_SIZE:
-		var complete := true
-		for r in GRID_SIZE:
-			if grid[r][c] == EMPTY:
-				complete = false
-				break
-		if complete:
-			full_cols.append(c)
+    # --- Detect full columns --------------------------------------------------
+    for c in GRID_SIZE:
+        var complete := true
+        for r in GRID_SIZE:
+            if grid[r][c] == EMPTY:
+                complete = false
+                break
+        if complete:
+            full_cols.append(c)
 
-	var lines := full_rows.size() + full_cols.size()
-	if lines == 0:
-		return  # Nothing to clear — caller may register a "dry" placement.
+    var lines := full_rows.size() + full_cols.size()
+    if lines == 0:
+        return  # Nothing to clear — caller may register a "dry" placement.
 
-	# --- Clear: union of full rows & cols (avoid double-counting intersections)
-	var cleared_cells := 0
-	for r in full_rows:
-		for c in GRID_SIZE:
-			if grid[r][c] != EMPTY:
-				cleared_cells += 1
-			grid[r][c] = EMPTY
-			cell_changed.emit(r, c, EMPTY)
+    # --- Clear: union of full rows & cols (avoid double-counting intersections)
+    var cleared_cells := 0
+    for r in full_rows:
+        for c in GRID_SIZE:
+            if grid[r][c] != EMPTY:
+                cleared_cells += 1
+            grid[r][c] = EMPTY
+            cell_changed.emit(r, c, EMPTY)
 
-	for c in full_cols:
-		for r in GRID_SIZE:
-			# Row loop already emptied intersection cells; guard prevents
-			# counting them twice.
-			if grid[r][c] != EMPTY:
-				cleared_cells += 1
-				grid[r][c] = EMPTY
-				cell_changed.emit(r, c, EMPTY)
+    for c in full_cols:
+        for r in GRID_SIZE:
+            # Row loop already emptied intersection cells; guard prevents
+            # counting them twice.
+            if grid[r][c] != EMPTY:
+                cleared_cells += 1
+                grid[r][c] = EMPTY
+                cell_changed.emit(r, c, EMPTY)
 
-	lines_cleared.emit(full_rows, full_cols, cleared_cells)
-	board_changed.emit()
+    lines_cleared.emit(full_rows, full_cols, cleared_cells)
+    board_changed.emit()
 
 # ---------------------------------------------------------------------------
 # GAME-OVER DETECTION
@@ -193,17 +193,17 @@ func check_and_clear_lines() -> void:
 ## `pieces`: Array of shape_cells arrays (the tray's 3 pieces).
 ## Worst case 3 * 64 * ~5 ops — still microseconds on mid-range phones.
 func has_any_valid_move(pieces: Array) -> bool:
-	for shape_cells in pieces:
-		if can_place_anywhere(shape_cells):
-			return true
-	no_moves_remaining.emit()
-	return false
+    for shape_cells in pieces:
+        if can_place_anywhere(shape_cells):
+            return true
+    no_moves_remaining.emit()
+    return false
 
 
 ## Brute-force scan of every origin for a single piece.
 func can_place_anywhere(shape_cells: Array) -> bool:
-	for r in GRID_SIZE:
-		for c in GRID_SIZE:
-			if can_place_shape(shape_cells, r, c):
-				return true
-	return false
+    for r in GRID_SIZE:
+        for c in GRID_SIZE:
+            if can_place_shape(shape_cells, r, c):
+                return true
+    return false
