@@ -71,13 +71,15 @@ func is_cell_empty(row: int, col: int) -> bool:
 
 
 ## Core placement test.
-## `shape_cells`: Array[Vector2i] of (row,col) offsets within the piece.
+## `shape_cells`: Array[Vector2i] offsets where offset.x = COLUMN delta and
+## offset.y = ROW delta (Godot's native x→right / y→down convention; do NOT
+## confuse this with the (row,col) tuple used by every function signature).
 ## Returns true if EVERY offset lands inside the board AND on an empty cell.
 ## Cost: O(n) with n = cells in shape (max ~5), allocation-free.
 func can_place_shape(shape_cells: Array, origin_row: int, origin_col: int) -> bool:
 	for offset in shape_cells:
-		var r: int = origin_row + offset.x
-		var c: int = origin_col + offset.y
+		var r: int = origin_row + offset.y
+		var c: int = origin_col + offset.x
 		# Inline bounds test (faster than calling is_cell_empty twice).
 		if r < 0 or r >= GRID_SIZE or c < 0 or c >= GRID_SIZE:
 			return false
@@ -87,32 +89,47 @@ func can_place_shape(shape_cells: Array, origin_row: int, origin_col: int) -> bo
 
 
 ## Snapshot helper used by InputHandler for live drag previews: returns the
-## snapped origin (row,col) for a given world position, clamped so the whole
-## piece's bounding box stays on screen. `piece_size` = bounding size Vector2i.
+## snapped origin as Vector2i(row, col), clamped so the whole piece bounding
+## box stays on the board.
+## `piece_bounds` MUST be Vector2i(x = width in cells, y = height in cells) —
+## i.e. Godot's natural x→width convention. Callers that store bounds as
+## Vector2i(rows, cols) must transpose them before calling (see InputHandler).
+## NOTE: `cell_offset_y` is reserved for future per-row visual offsets
+## (e.g. perspective tilt); it currently defaults to 0.0.
 func world_to_grid_clamped(world_pos: Vector2, cell_px: float,
-		cell_offset_y: float, piece_size: Vector2i) -> Vector2i:
-	var raw_col := int(floor((world_pos.x) / cell_px))
+		cell_offset_y: float, piece_bounds: Vector2i) -> Vector2i:
+	assert(cell_px > 0.0, "world_to_grid_clamped: cell_px must be > 0")
+	var raw_col := int(floor(world_pos.x / cell_px))
 	var raw_row := int(floor((world_pos.y - cell_offset_y) / cell_px))
 	# Clamp origins so the piece bounding box fits the board.
-	raw_col = clampi(raw_col, 0, GRID_SIZE - piece_size.y)
-	raw_row = clampi(raw_row, 0, GRID_SIZE - piece_size.x)
+	# x (width) constrains columns; y (height) constrains rows.
+	raw_col = clampi(raw_col, 0, GRID_SIZE - piece_bounds.x)
+	raw_row = clampi(raw_row, 0, GRID_SIZE - piece_bounds.y)
 	return Vector2i(raw_row, raw_col)
 
 # ---------------------------------------------------------------------------
 # MUTATIONS
 # ---------------------------------------------------------------------------
 
-## Writes the shape into the grid. Callers MUST have checked can_place_shape().
+## Writes the shape into the grid. Callers SHOULD have checked
+## can_place_shape() first; we re-validate here defensively because an
+## unchecked write would throw "Out of bounds" script errors on device
+## (and silently corrupt the board if indices happened to land in range).
+## Returns false (no mutation, no signals) when the placement is illegal.
 ## Emits per-cell updates (renderer batches them) + one bulk signal.
 func place_shape(shape_cells: Array, origin_row: int, origin_col: int,
-		color_id: int) -> void:
+		color_id: int) -> bool:
+	if not can_place_shape(shape_cells, origin_row, origin_col):
+		return false
+	# Same axis convention as can_place_shape: x = column delta, y = row delta.
 	for offset in shape_cells:
-		var r: int = origin_row + offset.x
-		var c: int = origin_col + offset.y
+		var r: int = origin_row + offset.y
+		var c: int = origin_col + offset.x
 		grid[r][c] = color_id
 		cell_changed.emit(r, c, color_id)
 	shape_placed.emit(origin_row, origin_col, color_id)
 	board_changed.emit()
+	return true
 
 
 ## Clears full rows/columns (Block-Blast rules: a line clears when ALL 8

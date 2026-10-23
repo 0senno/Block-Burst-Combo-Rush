@@ -90,6 +90,10 @@ func on_game_over() -> void:
 		return  # Guard against double-trigger (e.g. two rapid invalid drops).
 
 	state = GameState.GAME_OVER
+	# BUGFIX: increment the interstitial pacing counter HERE, not in some
+	# hypothetical future caller — this line previously didn't exist at all,
+	# leaving `_games_played_this_session` dead code and the documented
+	# "throttle interstitials" intent unimplemented.
 	_games_played_this_session += 1
 
 	# Persist best score only at session milestones (cheap on mobile storage).
@@ -105,6 +109,10 @@ func on_game_over() -> void:
 	#    decides availability; we simply listen for the result.
 	# 2) Queue an Interstitial. AdManager throttles frequency internally so we
 	#    can unconditionally request it here.
+	# NOTE: `show_rewarded()` grants its reward asynchronously (~seconds later,
+	# via AdManager.reward_earned). No gameplay code may assume the bonus has
+	# been applied when this function returns — UI must subscribe to
+	# `AdManager.reward_earned`.
 	if AdManager.has_rewarded_available():
 		AdManager.show_rewarded("double_score")
 
@@ -136,8 +144,11 @@ func return_to_menu() -> void:
 # ---------------------------------------------------------------------------
 
 ## Award points for cells of a successfully placed shape.
+## BUGFIX: gated on PLAYING — without this, events queued before the next
+## `start_game()` (e.g. an async reward callback landing during MENU/GAME_OVER)
+## could inflate the fresh session's score.
 func add_placement_score(cell_count: int) -> void:
-	if cell_count <= 0:
+	if state != GameState.PLAYING or cell_count <= 0:
 		return
 	_modify_score(cell_count * BASE_POINTS_PER_CELL)
 
@@ -145,7 +156,10 @@ func add_placement_score(cell_count: int) -> void:
 ## Award line-clear points. `lines_cleared` rows+cols cleared in one drop.
 ## Uses a classic escalating formula: 10 * lines^2 * cells_in_lines roughly,
 ## simplified here to a flat table multiplied by the combo streak.
+## Same PLAYING gate as add_placement_score (see BUGFIX note above).
 func add_line_clear_score(lines_cleared: int, cells_cleared: int) -> void:
+	if state != GameState.PLAYING:
+		return
 	if lines_cleared <= 0 or cells_cleared <= 0:
 		return
 	# Base value scales super-linearly to reward multi-line clears.

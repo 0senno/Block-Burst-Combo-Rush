@@ -3,6 +3,10 @@ extends Node
 # TestRunner.gd — headless smoke test for GridManager + GameManager wiring.
 # Run: godot --headless --path . res://tests/TestRunner.tscn
 # (assert() is stripped in release templates; this scene is dev-only.)
+#
+# COORDINATE CONTRACT under test (documented in GridManager.gd):
+#   shape_cells offsets use Godot's native axes: offset.x = column delta,
+#   offset.y = row delta. Function signatures speak (origin_row, origin_col).
 # ============================================================================
 
 const GridScript := preload("res://scripts/core/GridManager.gd")
@@ -15,14 +19,22 @@ func _ready() -> void:
 	GameManager.start_game()
 
 	# --- Placement / overlap ---------------------------------------------------
-	var line3 := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2)]
+	var line3 := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(0, 2)]  # horizontal 1x3
 	_check(gm.can_place_shape(line3, 0, 0), "empty board accepts piece")
-	gm.place_shape(line3, 0, 0, 1)
+	_check(gm.place_shape(line3, 0, 0, 1), "place_shape returns true on legal write")
 	_check(not gm.can_place_shape(line3, 0, 0), "overlap rejected")
-	_check(gm.grid[0][1] == 1, "cell written to grid")
+	_check(gm.grid[0][1] == 1, "cell written to grid (row 0, col 1)")
+	_check(gm.grid[1][0] == gm.EMPTY, "no phantom write below the bar (axis bug guard)")
 	_check(not gm.can_place_shape(line3, 7, 6), "out-of-bounds rejected")
+	_check(not gm.place_shape(line3, 7, 6, 1), "illegal place_shape refused safely")
 
-	# --- Single row clear --------------------------------------------------------
+	# --- Vertical piece exercises both axes ------------------------------------
+	var vert3 := [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]  # vertical 3x1
+	_check(gm.place_shape(vert3, 4, 5, 3), "vertical piece placed")
+	_check(gm.grid[4][5] == 3 and gm.grid[6][5] == 3 and gm.grid[5][6] == gm.EMPTY,
+		"vertical piece wrote rows 4..6 of col 5 only")
+
+	# --- Single row clear ------------------------------------------------------
 	for c in range(3, 8):
 		gm.place_shape([Vector2i(0, c)], 0, c, 1)
 	var sig := {"count": -1, "rows": [], "cols": []}
@@ -36,7 +48,7 @@ func _ready() -> void:
 	_check(sig["cols"].is_empty(), "no spurious column clear")
 	_check(gm.grid[0][0] == gm.EMPTY, "row emptied after clear")
 
-	# --- Intersecting row+col (double-count guard) -------------------------------
+	# --- Intersecting row+col (double-count guard) -----------------------------
 	for c in 8:
 		gm.place_shape([Vector2i(3, c)], 3, c, 2)
 	for r in 8:
@@ -49,13 +61,25 @@ func _ready() -> void:
 	_check(sig["count"] == 15, "intersection not double-counted (got %d)" % sig["count"])
 	_check(gm.grid[3][3] == gm.EMPTY, "intersection cell empty")
 
-	# --- Scoring through GameManager --------------------------------------------
+	# --- Scoring through GameManager -------------------------------------------
 	GameManager.add_placement_score(4)
 	_check(GameManager.score == 4, "placement score applied")
 	GameManager.add_line_clear_score(1, 8)
 	_check(GameManager.score > 4, "line-clear score applied")
+	# State gate: scoring must be inert outside PLAYING (async ad-callback guard).
+	GameManager.state = GameManager.GameState.MENU
+	GameManager.add_placement_score(99)
+	_check(GameManager.score > 4, "placement score ignored outside PLAYING")
+	GameManager.state = GameManager.GameState.PLAYING
 
-	# --- Game-over detection ------------------------------------------------------
+	# --- world_to_grid_clamped contract ----------------------------------------
+	# bounds Vector2i(width=3 cols, height=1 row); board 8x8 @ 72px.
+	var o: Vector2i = gm.world_to_grid_clamped(Vector2(72 * 2 + 10, 30), 72.0, 0.0, Vector2i(3, 1))
+	_check(o == Vector2i(0, 2), "clamp: mid-board snap -> Vector2i(row,col)")
+	o = gm.world_to_grid_clamped(Vector2(72 * 8, 72 * 8), 72.0, 0.0, Vector2i(3, 2))
+	_check(o == Vector2i(6, 5), "clamp: far bottom-right pins to max origin (row 6, col 5)")
+
+	# --- Game-over detection -----------------------------------------------------
 	var big: Array = []
 	for r in 4:
 		for c in 4:

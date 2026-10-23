@@ -7,9 +7,10 @@
 #
 # WHY extends Node?  Ad SDK callbacks are asynchronous and adapters need
 # SceneTree timers/coroutines to simulate or poll them, so adapters are real
-# Nodes owned (and freed) by AdManager.
+# Nodes owned (and freed) by AdManager. (MockAdAdapter calls get_tree(); on a
+# RefCounted that is a hard runtime crash — this MUST stay `extends Node`.)
 # ============================================================================
-extends RefCounted
+extends Node
 # NOTE: deliberately NOT `class_name AdAdapter`. Registering a global class
 # name here would create a cyclic-parse hazard with adapters that extend it
 # by path (MockAdAdapter, AppLovinAdapter). AdManager resolves the interface
