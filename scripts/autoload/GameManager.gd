@@ -54,11 +54,11 @@ signal game_over(final_score: int)
 # STATE
 # ---------------------------------------------------------------------------
 var state: GameState = GameState.MENU:
-	set(p_new):
-		if state == p_new:
-			return
-		state = p_new
-		state_changed.emit(state)
+    set(p_new):
+        if state == p_new:
+            return
+        state = p_new
+        state_changed.emit(state)
 
 var score: int = 0
 var best_score: int = 0
@@ -66,8 +66,8 @@ var combo_multiplier: int = 1          # 1 == no active combo streak
 var _games_played_this_session: int = 0 # used to throttle interstitials
 
 func _ready() -> void:
-	# Process at default priority; this node has no _process() so it is free.
-	_load_progress()
+    # Process at default priority; this node has no _process() so it is free.
+    _load_progress()
 
 # ---------------------------------------------------------------------------
 # PUBLIC API — LIFECYCLE
@@ -75,69 +75,69 @@ func _ready() -> void:
 
 ## Called by the Main Menu's "Play" button.
 func start_game() -> void:
-	score = 0
-	combo_multiplier = 1
-	_reset_combo_streak()
-	score_changed.emit(score)
-	state = GameState.PLAYING
+    score = 0
+    combo_multiplier = 1
+    _reset_combo_streak()
+    score_changed.emit(score)
+    state = GameState.PLAYING
 
 
 ## Called by GridManager/InputHandler when no remaining piece can be placed.
 ## This is ALSO the Rewarded-Ad hook: we ask AdManager whether a "continue"
 ## reward offer should be shown before finalizing game over.
 func on_game_over() -> void:
-	if state != GameState.PLAYING:
-		return  # Guard against double-trigger (e.g. two rapid invalid drops).
+    if state != GameState.PLAYING:
+        return  # Guard against double-trigger (e.g. two rapid invalid drops).
 
-	state = GameState.GAME_OVER
-	# BUGFIX: increment the interstitial pacing counter HERE, not in some
-	# hypothetical future caller — this line previously didn't exist at all,
-	# leaving `_games_played_this_session` dead code and the documented
-	# "throttle interstitials" intent unimplemented.
-	_games_played_this_session += 1
+    state = GameState.GAME_OVER
+    # BUGFIX: increment the interstitial pacing counter HERE, not in some
+    # hypothetical future caller — this line previously didn't exist at all,
+    # leaving `_games_played_this_session` dead code and the documented
+    # "throttle interstitials" intent unimplemented.
+    _games_played_this_session += 1
 
-	# Persist best score only at session milestones (cheap on mobile storage).
-	if score > best_score:
-		best_score = score
-		best_score_changed.emit(best_score)
-	_save_progress()
+    # Persist best score only at session milestones (cheap on mobile storage).
+    if score > best_score:
+        best_score = score
+        best_score_changed.emit(best_score)
+    _save_progress()
 
-	game_over.emit(score)
+    game_over.emit(score)
 
-	# --- AD HOOK -------------------------------------------------------------
-	# 1) Offer a Rewarded ad ("watch to continue / double score"). The adapter
-	#    decides availability; we simply listen for the result.
-	# 2) Queue an Interstitial. AdManager throttles frequency internally so we
-	#    can unconditionally request it here.
-	# NOTE: `show_rewarded()` grants its reward asynchronously (~seconds later,
-	# via AdManager.reward_earned). No gameplay code may assume the bonus has
-	# been applied when this function returns — UI must subscribe to
-	# `AdManager.reward_earned`.
-	if AdManager.has_rewarded_available():
-		AdManager.show_rewarded("double_score")
+    # --- AD HOOK -------------------------------------------------------------
+    # 1) Offer a Rewarded ad ("watch to continue / double score"). The adapter
+    #    decides availability; we simply listen for the result.
+    # 2) Queue an Interstitial. AdManager throttles frequency internally so we
+    #    can unconditionally request it here.
+    # NOTE: `show_rewarded()` grants its reward asynchronously (~seconds later,
+    # via AdManager.reward_earned). No gameplay code may assume the bonus has
+    # been applied when this function returns — UI must subscribe to
+    # `AdManager.reward_earned`.
+    if AdManager.has_rewarded_available():
+        AdManager.show_rewarded("double_score")
 
-	AdManager.request_interstitial("game_over")
+    AdManager.request_interstitial("game_over")
 
 
 ## Player chose to revive/continue after a rewarded ad. Re-enter PLAYING
 ## without wiping the score.
 func resume_from_game_over() -> void:
-	if state == GameState.GAME_OVER:
-		state = GameState.PLAYING
+    if state == GameState.GAME_OVER:
+        state = GameState.PLAYING
 
 
 func pause_game() -> void:
-	if state == GameState.PLAYING:
-		state = GameState.PAUSED
+    if state == GameState.PLAYING:
+        state = GameState.PAUSED
 
 
 func unpause_game() -> void:
-	if state == GameState.PAUSED:
-		state = GameState.PLAYING
+    if state == GameState.PAUSED:
+        state = GameState.PLAYING
 
 
 func return_to_menu() -> void:
-	state = GameState.MENU
+    state = GameState.MENU
 
 # ---------------------------------------------------------------------------
 # PUBLIC API — SCORING
@@ -148,9 +148,9 @@ func return_to_menu() -> void:
 ## `start_game()` (e.g. an async reward callback landing during MENU/GAME_OVER)
 ## could inflate the fresh session's score.
 func add_placement_score(cell_count: int) -> void:
-	if state != GameState.PLAYING or cell_count <= 0:
-		return
-	_modify_score(cell_count * BASE_POINTS_PER_CELL)
+    if state != GameState.PLAYING or cell_count <= 0:
+        return
+    _modify_score(cell_count * BASE_POINTS_PER_CELL)
 
 
 ## Award line-clear points. `lines_cleared` rows+cols cleared in one drop.
@@ -158,51 +158,51 @@ func add_placement_score(cell_count: int) -> void:
 ## simplified here to a flat table multiplied by the combo streak.
 ## Same PLAYING gate as add_placement_score (see BUGFIX note above).
 func add_line_clear_score(lines_cleared: int, cells_cleared: int) -> void:
-	if state != GameState.PLAYING:
-		return
-	if lines_cleared <= 0 or cells_cleared <= 0:
-		return
-	# Base value scales super-linearly to reward multi-line clears.
-	var base := cells_cleared * 10 * lines_cleared
-	_bump_combo_streak()
-	_modify_score(base * combo_multiplier)
+    if state != GameState.PLAYING:
+        return
+    if lines_cleared <= 0 or cells_cleared <= 0:
+        return
+    # Base value scales super-linearly to reward multi-line clears.
+    var base := cells_cleared * 10 * lines_cleared
+    _bump_combo_streak()
+    _modify_score(base * combo_multiplier)
 
 
 ## Reset combo when a placement clears zero lines (breaks the streak).
 func register_dry_placement() -> void:
-	_reset_combo_streak()
+    _reset_combo_streak()
 
 # ---------------------------------------------------------------------------
 # INTERNALS
 # ---------------------------------------------------------------------------
 
 func _modify_score(delta: int) -> void:
-	score += delta
-	score_changed.emit(score)
+    score += delta
+    score_changed.emit(score)
 
 
 func _bump_combo_streak() -> void:
-	# Multiplier grows by COMBO_STEP per consecutive clearing drop, capped.
-	combo_multiplier = mini(combo_multiplier + COMBO_STEP, MAX_COMBO_MULTIPLIER)
-	combo_changed.emit(combo_multiplier)
+    # Multiplier grows by COMBO_STEP per consecutive clearing drop, capped.
+    combo_multiplier = mini(combo_multiplier + COMBO_STEP, MAX_COMBO_MULTIPLIER)
+    combo_changed.emit(combo_multiplier)
 
 
 func _reset_combo_streak() -> void:
-	if combo_multiplier != 1:
-		combo_multiplier = 1
-		combo_changed.emit(combo_multiplier)
+    if combo_multiplier != 1:
+        combo_multiplier = 1
+        combo_changed.emit(combo_multiplier)
 
 
 func _save_progress() -> void:
-	var cfg := ConfigFile.new()
-	cfg.set_value(SECTION_PROGRESS, KEY_BEST_SCORE, best_score)
-	# Errors ignored intentionally: read-only storage on some sandboxes must
-	# never crash the game loop.
-	cfg.save(SAVE_PATH)
+    var cfg := ConfigFile.new()
+    cfg.set_value(SECTION_PROGRESS, KEY_BEST_SCORE, best_score)
+    # Errors ignored intentionally: read-only storage on some sandboxes must
+    # never crash the game loop.
+    cfg.save(SAVE_PATH)
 
 
 func _load_progress() -> void:
-	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
-		return  # First launch — defaults are fine.
-	best_score = cfg.get_value(SECTION_PROGRESS, KEY_BEST_SCORE, 0)
+    var cfg := ConfigFile.new()
+    if cfg.load(SAVE_PATH) != OK:
+        return  # First launch — defaults are fine.
+    best_score = cfg.get_value(SECTION_PROGRESS, KEY_BEST_SCORE, 0)

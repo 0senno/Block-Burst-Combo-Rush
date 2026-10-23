@@ -63,9 +63,9 @@ var _down_pos: Vector2 = Vector2.ZERO   # press position, for threshold check
 var _last_pos: Vector2 = Vector2.ZERO   # most recent pointer position
 
 func _ready() -> void:
-	# _unhandled_input is enabled automatically because we implement it.
-	assert(grid_manager != null, "InputHandler: grid_manager not assigned.")
-	assert(piece_tray != null, "InputHandler: piece_tray not assigned.")
+    # _unhandled_input is enabled automatically because we implement it.
+    assert(grid_manager != null, "InputHandler: grid_manager not assigned.")
+    assert(piece_tray != null, "InputHandler: piece_tray not assigned.")
 
 # ---------------------------------------------------------------------------
 # PUBLIC API — called by the tray when it spawns/refreshes pieces
@@ -75,115 +75,115 @@ func _ready() -> void:
 ## Node2D whose children are the colored quads; `cells` are Vector2i (row,col)
 ## offsets; `bounds` is the bounding size in cells (e.g. Vector2i(3,2)).
 func register_piece(index: int, root: Node2D, cells: Array, bounds: Vector2i) -> void:
-	assert(root != null and not cells.is_empty(), "Invalid piece registration")
-	piece_tray.register_piece(index, root, cells, bounds)
+    assert(root != null and not cells.is_empty(), "Invalid piece registration")
+    piece_tray.register_piece(index, root, cells, bounds)
 
 # ---------------------------------------------------------------------------
 # CORE INPUT ENTRY POINT
 # ---------------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Ignore gameplay input unless we are actually playing (menu/game-over safe).
-	if GameManager.state != GameManager.GameState.PLAYING:
-		return
+    # Ignore gameplay input unless we are actually playing (menu/game-over safe).
+    if GameManager.state != GameManager.GameState.PLAYING:
+        return
 
-	# NOTE on `emulate_touch_from_mouse = true` (our project setting): the
-	# viewport ALSO synthesizes InputEventScreenTouch/Drag from mouse events,
-	# so a raw mouse event reaches us twice if we handle both paths. We only
-	# take the synthetic touch path and swallow the raw mouse duplicates here.
-	# If emulate_touch_from_mouse is ever disabled, delete this early-out —
-	# the dedicated mouse branches below exist for exactly that fallback.
-	if OS.has_feature("embedded") or DisplayServer.is_touchscreen_available() \
-			or Input.get_use_emulated_touch_from_mouse():
-		if event is InputEventMouseButton or event is InputEventMouseMotion:
-			return
+    # NOTE on `emulate_touch_from_mouse = true` (our project setting): the
+    # viewport ALSO synthesizes InputEventScreenTouch/Drag from mouse events,
+    # so a raw mouse event reaches us twice if we handle both paths. We only
+    # take the synthetic touch path and swallow the raw mouse duplicates here.
+    # If emulate_touch_from_mouse is ever disabled, delete this early-out —
+    # the dedicated mouse branches below exist for exactly that fallback.
+    if OS.has_feature("embedded") or DisplayServer.is_touchscreen_available() \
+            or Input.get_use_emulated_touch_from_mouse():
+        if event is InputEventMouseButton or event is InputEventMouseMotion:
+            return
 
-	# --- Normalize touch & mouse into ONE code path ---------------------------
-	if event is InputEventScreenTouch:
-		var st := event as InputEventScreenTouch
-		if st.pressed:
-			_on_pointer_down(st.index, st.position)
-		else:
-			_on_pointer_up(st.index)
-		get_viewport().set_input_as_handled()
-	elif event is InputEventScreenDrag:
-		var sd := event as InputEventScreenDrag
-		_on_pointer_move(sd.index, sd.position)
-	elif event is InputEventMouseButton:
-		# Desktop-editor testing parity (only when NOT emulating touch):
-		# left mouse acts like a single touch with synthetic id -1.
-		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT:
-			if mb.pressed:
-				_on_pointer_down(-1, mb.position)
-			else:
-				_on_pointer_up(-1)
-			get_viewport().set_input_as_handled()
-	elif event is InputEventMouseMotion:
-		_on_pointer_move(-1, (event as InputEventMouseMotion).position)
+    # --- Normalize touch & mouse into ONE code path ---------------------------
+    if event is InputEventScreenTouch:
+        var st := event as InputEventScreenTouch
+        if st.pressed:
+            _on_pointer_down(st.index, st.position)
+        else:
+            _on_pointer_up(st.index)
+        get_viewport().set_input_as_handled()
+    elif event is InputEventScreenDrag:
+        var sd := event as InputEventScreenDrag
+        _on_pointer_move(sd.index, sd.position)
+    elif event is InputEventMouseButton:
+        # Desktop-editor testing parity (only when NOT emulating touch):
+        # left mouse acts like a single touch with synthetic id -1.
+        var mb := event as InputEventMouseButton
+        if mb.button_index == MOUSE_BUTTON_LEFT:
+            if mb.pressed:
+                _on_pointer_down(-1, mb.position)
+            else:
+                _on_pointer_up(-1)
+            get_viewport().set_input_as_handled()
+    elif event is InputEventMouseMotion:
+        _on_pointer_move(-1, (event as InputEventMouseMotion).position)
 
 # ---------------------------------------------------------------------------
 # POINTER HANDLERS
 # ---------------------------------------------------------------------------
 
 func _on_pointer_down(finger: int, screen_pos: Vector2) -> void:
-	if _state != DragState.IDLE:
-		return  # Already busy with another finger — ignore (anti-ghost-touch).
+    if _state != DragState.IDLE:
+        return  # Already busy with another finger — ignore (anti-ghost-touch).
 
-	# Which tray slot did we hit? Delegates hit-rect test to the pooled tray.
-	var idx: int = piece_tray.find_piece_at(screen_pos)
-	if idx < 0:
-		return
+    # Which tray slot did we hit? Delegates hit-rect test to the pooled tray.
+    var idx: int = piece_tray.find_piece_at(screen_pos)
+    if idx < 0:
+        return
 
-	_active_touch = finger
-	_state = DragState.CANDIDATE
-	_down_pos = screen_pos
-	_last_pos = screen_pos
-	_held_index = idx
-	_held_node = piece_tray.get_piece_node(idx)
-	_held_cells = piece_tray.get_piece_cells(idx)
-	_piece_bounds = piece_tray.get_piece_bounds(idx)
-	_tray_home = _held_node.global_position
+    _active_touch = finger
+    _state = DragState.CANDIDATE
+    _down_pos = screen_pos
+    _last_pos = screen_pos
+    _held_index = idx
+    _held_node = piece_tray.get_piece_node(idx)
+    _held_cells = piece_tray.get_piece_cells(idx)
+    _piece_bounds = piece_tray.get_piece_bounds(idx)
+    _tray_home = _held_node.global_position
 
 
 func _on_pointer_move(finger: int, screen_pos: Vector2) -> void:
-	if finger != _active_touch or _held_index < 0:
-		return  # Not our finger, or nothing held.
+    if finger != _active_touch or _held_index < 0:
+        return  # Not our finger, or nothing held.
 
-	_last_pos = screen_pos
+    _last_pos = screen_pos
 
-	# Threshold: don't start dragging on a jittery tap-in-place.
-	if _state == DragState.CANDIDATE:
-		if screen_pos.distance_to(_down_pos) < drag_threshold_px:
-			return
-		_state = DragState.DRAGGING
-		piece_pick_started.emit(_held_index)
+    # Threshold: don't start dragging on a jittery tap-in-place.
+    if _state == DragState.CANDIDATE:
+        if screen_pos.distance_to(_down_pos) < drag_threshold_px:
+            return
+        _state = DragState.DRAGGING
+        piece_pick_started.emit(_held_index)
 
-	# Move the visual so its CENTER follows the finger, lifted upward so the
-	# fingertip does not cover the piece.
-	_held_node.global_position = (
-		screen_pos - _piece_center_offset() - Vector2(0.0, drag_lift_offset_px)
-	)
+    # Move the visual so its CENTER follows the finger, lifted upward so the
+    # fingertip does not cover the piece.
+    _held_node.global_position = (
+        screen_pos - _piece_center_offset() - Vector2(0.0, drag_lift_offset_px)
+    )
 
-	# Live snap preview for the renderer (green = valid, red = blocked).
-	var preview: Vector2i = _screen_to_grid_origin(screen_pos)
-	var valid: bool = grid_manager.can_place_shape(_held_cells, preview.x, preview.y)
-	piece_dragged.emit(_held_index, preview, valid)
+    # Live snap preview for the renderer (green = valid, red = blocked).
+    var preview: Vector2i = _screen_to_grid_origin(screen_pos)
+    var valid: bool = grid_manager.can_place_shape(_held_cells, preview.x, preview.y)
+    piece_dragged.emit(_held_index, preview, valid)
 
 
 func _on_pointer_up(finger: int) -> void:
-	if finger != _active_touch:
-		return  # A different finger lifted — leave our drag untouched.
+    if finger != _active_touch:
+        return  # A different finger lifted — leave our drag untouched.
 
-	_active_touch = -1
+    _active_touch = -1
 
-	if _state == DragState.DRAGGING and _held_index >= 0:
-		_commit_drop()
-	elif _state == DragState.CANDIDATE and _held_index >= 0:
-		# Tap without meaningful movement: put the piece back home.
-		_return_to_tray()
+    if _state == DragState.DRAGGING and _held_index >= 0:
+        _commit_drop()
+    elif _state == DragState.CANDIDATE and _held_index >= 0:
+        # Tap without meaningful movement: put the piece back home.
+        _return_to_tray()
 
-	_reset_hold()
+    _reset_hold()
 
 
 ## Lifecycle safety net: if the scene is hidden (menu swap), tree-exited, or
@@ -192,59 +192,59 @@ func _on_pointer_up(finger: int) -> void:
 ## position with the handler stuck in DRAGGING. Snap state + visuals back to
 ## a sane baseline.
 func _notification(what: int) -> void:
-	match what:
-		NOTIFICATION_APPLICATION_FOCUS_OUT, \
-		NOTIFICATION_VISIBILITY_CHANGED, \
-		NOTIFICATION_EXIT_TREE:
-			_abort_drag_if_any()
-		_:
-			pass
+    match what:
+        NOTIFICATION_APPLICATION_FOCUS_OUT, \
+        NOTIFICATION_VISIBILITY_CHANGED, \
+        NOTIFICATION_EXIT_TREE:
+            _abort_drag_if_any()
+        _:
+            pass
 
 
 func _abort_drag_if_any() -> void:
-	if _state == DragState.IDLE or _held_index < 0:
-		return
-	# Only relevant while not actively playing; during PLAYING a normal UP
-	# event resolves the drag. (Visibility/exit can still arrive mid-drag.)
-	_return_to_tray()
-	_reset_hold()
+    if _state == DragState.IDLE or _held_index < 0:
+        return
+    # Only relevant while not actively playing; during PLAYING a normal UP
+    # event resolves the drag. (Visibility/exit can still arrive mid-drag.)
+    _return_to_tray()
+    _reset_hold()
 
 
 func _reset_hold() -> void:
-	_state = DragState.IDLE
-	_held_index = -1
-	_held_node = null
-	_held_cells = []
-	_piece_bounds = Vector2i.ONE
+    _state = DragState.IDLE
+    _held_index = -1
+    _held_node = null
+    _held_cells = []
+    _piece_bounds = Vector2i.ONE
 
 # ---------------------------------------------------------------------------
 # DROP RESOLUTION
 # ---------------------------------------------------------------------------
 
 func _commit_drop() -> void:
-	var origin := _screen_to_grid_origin(_last_pos)
-	var fits: bool = grid_manager.can_place_shape(_held_cells, origin.x, origin.y)
+    var origin := _screen_to_grid_origin(_last_pos)
+    var fits: bool = grid_manager.can_place_shape(_held_cells, origin.x, origin.y)
 
-	if fits:
-		# Commit order matters: place -> placement score -> line clear.
-		# Line-clear scoring/combo is handled by whoever listens to
-		# GridManager.lines_cleared (the Game scene bootstrap), keeping this
-		# script free of economy rules.
-		var color_id: int = piece_tray.get_piece_color(_held_index)
-		# Defensive: place_shape re-validates; if a future refactor ever lets
-		# state change between the check above and this call, bail out cleanly
-		# instead of mutating a half-written board.
-		if not grid_manager.place_shape(_held_cells, origin.x, origin.y, color_id):
-			piece_dropped.emit(_held_index, false)
-			_return_to_tray()
-			return
-		GameManager.add_placement_score(_held_cells.size())
-		grid_manager.check_and_clear_lines()  # emits lines_cleared (or nothing)
-		piece_dropped.emit(_held_index, true)
-		piece_tray.consume_slot(_held_index)  # recycle + maybe refill + game-over check
-	else:
-		piece_dropped.emit(_held_index, false)
-		_return_to_tray()
+    if fits:
+        # Commit order matters: place -> placement score -> line clear.
+        # Line-clear scoring/combo is handled by whoever listens to
+        # GridManager.lines_cleared (the Game scene bootstrap), keeping this
+        # script free of economy rules.
+        var color_id: int = piece_tray.get_piece_color(_held_index)
+        # Defensive: place_shape re-validates; if a future refactor ever lets
+        # state change between the check above and this call, bail out cleanly
+        # instead of mutating a half-written board.
+        if not grid_manager.place_shape(_held_cells, origin.x, origin.y, color_id):
+            piece_dropped.emit(_held_index, false)
+            _return_to_tray()
+            return
+        GameManager.add_placement_score(_held_cells.size())
+        grid_manager.check_and_clear_lines()  # emits lines_cleared (or nothing)
+        piece_dropped.emit(_held_index, true)
+        piece_tray.consume_slot(_held_index)  # recycle + maybe refill + game-over check
+    else:
+        piece_dropped.emit(_held_index, false)
+        _return_to_tray()
 
 # ---------------------------------------------------------------------------
 # HELPERS
@@ -256,14 +256,14 @@ func _commit_drop() -> void:
 ## `.x` as row and `.y` as col). Accounts for the lift offset so what the
 ## player sees floating above the finger is exactly what lands on the board.
 func _screen_to_grid_origin(screen_pos: Vector2) -> Vector2i:
-	# Where the piece's TOP-LEFT CELL actually is on screen right now.
-	var piece_top_left := screen_pos - Vector2(0.0, drag_lift_offset_px)
-	# Shift into board-local space, then let GridManager do the math+clamping.
-	var local := piece_top_left - board_origin
-	# Transpose bounds: tray contract stores Vector2i(rows, cols); GridManager
-	# expects Vector2i(x = width-in-cells, y = height-in-cells).
-	var bounds_wh := Vector2i(_piece_bounds.y, _piece_bounds.x)
-	return grid_manager.world_to_grid_clamped(local, cell_size_px, 0.0, bounds_wh)
+    # Where the piece's TOP-LEFT CELL actually is on screen right now.
+    var piece_top_left := screen_pos - Vector2(0.0, drag_lift_offset_px)
+    # Shift into board-local space, then let GridManager do the math+clamping.
+    var local := piece_top_left - board_origin
+    # Transpose bounds: tray contract stores Vector2i(rows, cols); GridManager
+    # expects Vector2i(x = width-in-cells, y = height-in-cells).
+    var bounds_wh := Vector2i(_piece_bounds.y, _piece_bounds.x)
+    return grid_manager.world_to_grid_clamped(local, cell_size_px, 0.0, bounds_wh)
 
 
 ## Visual centering offset for the held node. Uses the ACTUAL drawn extents
@@ -271,20 +271,20 @@ func _screen_to_grid_origin(screen_pos: Vector2) -> Vector2i:
 ## thin bars whose bounding box ≠ cells * cell size); falls back to the
 ## bounding-box estimate otherwise.
 func _piece_center_offset() -> Vector2:
-	if piece_tray != null and piece_tray.has_method("get_piece_visual_extents"):
-		var extents: Vector2 = piece_tray.get_piece_visual_extents(_held_index)
-		if extents.x > 0.0 and extents.y > 0.0:
-			return extents * 0.5
-	return Vector2(_piece_bounds.y, _piece_bounds.x) * cell_size_px * 0.5
+    if piece_tray != null and piece_tray.has_method("get_piece_visual_extents"):
+        var extents: Vector2 = piece_tray.get_piece_visual_extents(_held_index)
+        if extents.x > 0.0 and extents.y > 0.0:
+            return extents * 0.5
+    return Vector2(_piece_bounds.y, _piece_bounds.x) * cell_size_px * 0.5
 
 
 func _return_to_tray() -> void:
-	if _held_node:
-		# Tween back instead of teleporting — feels premium, costs one node.
-		var tw := _held_node.create_tween()
-		tw.tween_property(_held_node, "global_position", _tray_home, 0.12) \
-			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	piece_returned_to_tray.emit(_held_index)
+    if _held_node:
+        # Tween back instead of teleporting — feels premium, costs one node.
+        var tw := _held_node.create_tween()
+        tw.tween_property(_held_node, "global_position", _tray_home, 0.12) \
+            .set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+    piece_returned_to_tray.emit(_held_index)
 
 # ---------------------------------------------------------------------------
 # PIECE TRAY CONTRACT (duck-typed interface expected on `piece_tray`)
