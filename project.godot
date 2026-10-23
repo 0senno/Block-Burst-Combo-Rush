@@ -1,0 +1,31 @@
+; Engine configuration file — minimal but valid, tuned for the block-puzzle demo.
+; Real projects: also set mobile renderer + canvas_items stretch in the editor.
+
+config_version=5
+
+[application]
+
+config/name="Block Puzzle (Prototype)"
+run/main_scene="res://tests/TestRunner.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[autoload]
+
+GameManager="*res://scripts/autoload/GameManager.gd"
+AdManager="*res://scripts/autoload/AdManager.gd"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
